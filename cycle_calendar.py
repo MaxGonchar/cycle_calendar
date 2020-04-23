@@ -4,18 +4,18 @@ import sys
 
 
 # single input form
-def input_date():
+def input_date() -> str:
     return input('year ') + '-' + input('month ') + '-' + input('day ')
 
 
 # turn data str 'y-m-d' to datetime
-def str_date(date_str):
+def str_date(date_str: str):
     dates = date_str.split('-')
     return datetime(int(dates[0]), int(dates[1]), int(dates[2])).date()
 
 
 # calculate cycles between dates in list -> list fo cycles
-def calc_cycles(dates):
+def calc_cycles(dates: list) -> list:
     cycles = []
     for index in range(len(dates) - 1):
         cycles.append((dates[index + 1] - dates[index]).days)
@@ -23,7 +23,7 @@ def calc_cycles(dates):
 
 
 # calculate average cycle for period 'p' -> list
-def average_for(cycles, p):
+def average_for(cycles: list, p: int) -> list:
     average = []
     for i in range(len(cycles)):
         if i < (p - 1):
@@ -34,7 +34,7 @@ def average_for(cycles, p):
 
 
 # output next cycle's start date according to period
-def output(date, cycle, period):
+def output(date: str, cycle: str, period: int) -> None:
     if cycle != 'None':
         print(f'According to the data for the period of {period} months, '
               f'start of next cycle worth expecting '
@@ -46,7 +46,7 @@ def output(date, cycle, period):
 class User:
     """Represents user"""
 
-    def __init__(self, username):
+    def __init__(self, username: str):
         self.username = username
 
     def create_user(self):
@@ -129,18 +129,21 @@ class User:
                                 f'WHERE id = (SELECT COUNT(*) '
                                 f'FROM {self.username})'))
 
-        output(data[0][1], data[0][3], 6)
-        output(data[0][1], data[0][4], 12)
+        if not data:
+            print('There no data.')
+        else:
+            output(data[0][1], data[0][3], 6)
+            output(data[0][1], data[0][4], 12)
 
-        if (data[0][3] and data[0][4]) == 'None':
-            print(f'According to available data, '
-                  f'start of next cycle worth expecting '
-                  f'{str_date(data[0][1]) + timedelta(int(data[0][5]))}'
-                  f'  +/- 5 days')
+            if (data[0][3] and data[0][4]) == 'None':
+                print(f'According to available data, '
+                      f'start of next cycle worth expecting '
+                      f'{str_date(data[0][1]) + timedelta(int(data[0][5]))}'
+                      f'  +/- 5 days')
 
-        print(f'Ovulation period -'
-              f' {str_date(data[0][1]) + timedelta(10)} -'
-              f' {str_date(data[0][1]) + timedelta(14)}')
+            print(f'Ovulation period -'
+                  f' {str_date(data[0][1]) + timedelta(10)} -'
+                  f' {str_date(data[0][1]) + timedelta(14)}')
 
     def check_strange(self):
         """
