@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 from calendar import Calendar
-from datetime import date, timedelta
-import sqlite3
-import sys
+from datetime import date
+
+
+import cycle_db
+from cycle_calc import color_dict
 
 
 class View(tk.Frame):
@@ -13,17 +15,15 @@ class View(tk.Frame):
     username - one session - one user
     dates - load from DB and change by user
     colors - colors of days according to cycle
-    f_date - platform-specific date string format
     """
     y, m = map(int, str(date.today()).split('-')[:2])
     username = ''
     dates = []
     colors = {}
-    f_date = ''
 
     def __init__(self, root):
         tk.Frame.__init__(self, root)
-        self.db = DB()
+        self.db = cycle_db.DB()
         self.start_screen()
 
     #  =======================WINDOWS==============================
@@ -136,9 +136,9 @@ class View(tk.Frame):
         elif choice == 'New user':  # registration new user
             self.registration_screen()
         else:  # upload existing user's data
-            View.dates = list(map(lambda x: x[0], self.db.upload(choice)))
+            View.dates = [x[0] for x in self.db.upload(choice)]
             View.username = choice
-            View.colors = self.color_dict()
+            View.colors = color_dict(View.dates)
             self.display_w_screen()
 
     def registration(self, username):
@@ -181,104 +181,10 @@ class View(tk.Frame):
         Entering date changes in the database, overriding the color dictionary
         """
         View.dates.sort(key=lambda x: date(*map(int, x.split())))
-        self.db.download()
+        self.db.download(View.username, View.dates)
         # upload existing user's data
-        View.colors = self.color_dict()
+        View.colors = color_dict(View.dates)
         self.display_w_screen()
-
-    # ============================CALCULATIONS============================
-    @staticmethod
-    def calc_cycledate():
-        """Calculation of the cycle for the last 6 months"""
-        d = [list(map(int, d.split())) for d in View.dates]
-        days = 0
-        cycledate = None
-
-        if len(d) == 0:
-            pass
-        elif len(d) == 1:
-            cycledate = (date(*d[-1]) + timedelta(27)).strftime(View.f_date)
-        elif len(d) < 6:
-            for i in range(1, len(d)):
-                days += (date(*d[i]) - date(*d[i - 1])).days
-            cycledate = (
-                (date(*d[-1]) + timedelta(days // (len(d) - 1))).strftime(View.f_date)
-            )
-        elif len(d) >= 6:
-            for i in range(1, 6):
-                days += (date(*d[-i]) - date(*d[-(i + 1)])).days
-            cycledate = (date(*d[-1]) + timedelta(days // 5)).strftime(View.f_date)
-        return cycledate
-
-    def color_dict(self):
-        """Determination of color by key - date"""
-        cycle = self.calc_cycledate()
-        ovul = self.calc_ovulation()
-        dates = list(map(lambda x: x[0], self.db.upload(View.username)))
-        c_dict = {}
-
-        if cycle:
-            d = {-5: 'gold2', -4: 'orange', -3: 'dark orange',
-                 -2: 'DarkOrange3', -1: 'OrangeRed3', 0: 'red',
-                 1: 'OrangeRed3', 2: 'DarkOrange3', 3: 'dark orange',
-                 4: 'orange', 5: 'gold2', }
-            for i in range(-5, 6):
-                c = list(map(int, cycle.split()))
-                c_dict[(date(*c) + timedelta(i)).strftime(View.f_date)] = d[i]
-
-        if ovul:
-            for el in ovul:
-                c_dict[el] = 'lawn green'
-
-        if dates:
-            for el in dates:
-                c_dict[el] = 'red'
-
-        return c_dict
-
-    @staticmethod
-    def calc_ovulation():
-        """Mid cycle calculation"""
-        d = [list(map(int, d.split())) for d in View.dates]
-
-        if len(d) == 0:
-            return None
-        else:
-            return [(date(*d[-1]) + timedelta(10 + i)).strftime(View.f_date)
-                    for i in range(5)]
-
-
-class DB:
-    """Work with data base"""
-
-    def __init__(self):
-        self.conn = sqlite3.connect('base.db')
-        self.cursor = self.conn.cursor()
-
-    def get_usernames(self) -> list:
-        """Get list of registered users from db titles"""
-        db_list = list(self.cursor.execute('SELECT * FROM sqlite_master'))
-        users = [db_list[i][1] for i in range(0, len(db_list), 2)]
-        return users
-
-    def create(self, username):
-        """Create db for new user"""
-        self.cursor.execute(f' CREATE TABLE IF NOT EXISTS {username}'
-                            f' (id INT primary key, '
-                            f' date TEXT)')
-
-    def upload(self, username) -> list:
-        """Upload dates from db"""
-        self.cursor.execute(f"SELECT date FROM {username}")
-        return list(self.cursor.fetchall())
-
-    def download(self):
-        """Load dates to db"""
-        self.cursor.execute(f'DELETE FROM {View.username}')
-        for d in View.dates:
-            self.cursor.execute(
-                f'INSERT INTO {View.username} (date) VALUES ("{d}")')
-        self.conn.commit()
 
 
 def main():
@@ -287,7 +193,6 @@ def main():
     root.title('Cycle Calendar')
     root.geometry('365x500')
     root.resizable(False, False)
-    View.f_date = '%Y %#m %#d' if sys.platform == 'win32' else '%Y %-m %-d'
     root.mainloop()
 
 
