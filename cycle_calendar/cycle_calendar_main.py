@@ -188,6 +188,7 @@ class View(tk.Frame):
 
 
 def main():
+    """Main function"""
     root = tk.Tk()
     View(root)
     root.title('Cycle Calendar')
